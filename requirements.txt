@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+pydantic
+alembic
+aiogram
+celery[redis]
+redis
+pytest
+pytest-asyncio
+httpx
+pydantic-settings
+flower
+requests
+psycopg2-binary
+jinja2

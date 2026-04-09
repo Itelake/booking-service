@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Salon Booking</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+body { font-family: Arial; padding:16px; }
+.card { border:1px solid #ddd; border-radius:10px; padding:10px; margin:10px 0; }
+button { padding:8px 10px; margin:4px; cursor:pointer; }
+.primary { background:#1f7ae0; color:white; }
+.danger { background:#e53935; color:white; }
+.hidden { display:none; }
+.topbar { display:flex; justify-content:space-between; }
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div id="me">Не авторизован</div>
+  <div>
+    <button onclick="loadServices()">Записаться</button>
+    <button onclick="loadMy()">Мои</button>
+    <button onclick="loadAdmin()">Админ</button>
+  </div>
+</div>
+
+<hr>
+
+<div id="app"></div>
+
+<script>
+const API = "";
+
+const app = document.getElementById("app");
+
+let token = localStorage.getItem("token") || null;
+let me = null;
+let service, master;
+
+// ---------------- API ----------------
+async function api(path, options={}){
+  const res = await fetch(API + path,{
+    method: options.method || "GET",
+    headers:{
+      "Authorization": token ? "Bearer "+token : "",
+      "Content-Type":"application/json"
+    },
+    body: options.body ? JSON.stringify(options.body):null
+  });
+
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.detail || "error");
+  return data;
+}
+
+// ---------------- AUTH ----------------
+async function init(){
+  try{
+    const tg = window.Telegram?.WebApp;
+
+    if(tg && tg.initData){
+      tg.ready();
+
+      if(!token){
+        const res = await fetch("/webapp/auth",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({init_data: tg.initData})
+        });
+
+        const data = await res.json();
+        token = data.access_token;
+        localStorage.setItem("token", token);
+      }
+
+    } else {
+      // браузер
+      if(!token && DEV_TOKEN){
+        token = DEV_TOKEN;
+        localStorage.setItem("token", token);
+      }
+    }
+
+    me = await api("/client/me");
+    document.getElementById("me").innerText = me.is_admin ? "Админ" : "Клиент";
+
+  }catch(e){
+    alert("Ошибка авторизации: " + e.message);
+  }
+}
+
+init();
+
+// ---------------- SERVICES ----------------
+async function loadServices(){
+  const services = await api("/client/services");
+
+  let html = "<h2>Услуги</h2>";
+
+  services.forEach(s=>{
+    html += `
+      <div class="card">
+        ${s.name}
+        <button onclick="selectService(${s.id})">Выбрать</button>
+      </div>
+    `;
+  });
+
+  app.innerHTML = html;
+}
+
+async function selectService(id){
+  service = id;
+
+  const masters = await api(`/client/services/${id}/masters`);
+
+  let html = "<h2>Мастера</h2>";
+
+masters.forEach(m=>{
+  html += `
+    <div class="card">
+      ${m.first_name} ${m.last_name}<br>
+      💰 ${m.price} ₸
+      <br>
+      <button onclick="selectMaster(${m.master_id})">Выбрать</button>
+    </div>
+  `;
+});
+
+  app.innerHTML = html;
+}
+
+async function selectMaster(id){
+  master = id;
+
+  // 🔹 Добавляем выбор даты
+  let html = "<h2>Выберите день</h2>";
+  html += `<input type="date" id="datePicker" />`;
+  html += `<button onclick="loadSlots()">Показать слоты</button>`;
+  app.innerHTML = html;
+}
+
+async function loadSlots(){
+  const date = document.getElementById("datePicker").value;
+  if(!date) return alert("Выберите дату");
+
+  const slots = await api("/client/availability",{
+    method:"POST",
+    body:{ service_id:service, master_id:master, date }
+  });
+
+  let html = `<h2>Выберите время для ${date}</h2>`;
+
+  if(!slots.slots || slots.slots.length === 0){
+    html += `<p>На этот день свободных слотов нет.</p>`;
+    html += `<button onclick="selectMaster(${master})">Выбрать другой день</button>`;
+  } else {
+    slots.slots.forEach(s=>{
+      html += `<button onclick="createBooking('${s}','${date}')">${s}</button>`;
+    });
+  }
+
+  app.innerHTML = html;
+}
+// Создание записи с выбранной датой
+async function createBooking(time, date){
+  try{
+    const booking = await api("/client/bookings",{
+      method:"POST",
+      body:{
+        service_id: service,
+        master_id: master,
+        date: date,
+        start_time: time
+      }
+    });
+
+    let msg = `Запись создана\n💰 Цена: ${booking.price_at_booking} ₸`;
+
+    if(booking.discount_percent_applied > 0){
+      msg += `\n🎁 Скидка: ${booking.discount_percent_applied}%`;
+      msg += `\nИтого: ${booking.final_price} ₸`;
+    }
+
+    alert(msg);
+
+    loadMy();
+
+  }catch(e){
+    alert("Ошибка записи: " + e.message);
+  }
+}
+
+// ---------------- MY BOOKINGS ----------------
+function ru(s){
+  return {
+    created:"Создано",
+    confirmed:"Подтверждено",
+    cancelled:"Отменено",
+    done:"Выполнено"
+  }[s] || s;
+}
+
+async function loadMy(){
+  const rows = await api("/client/me/bookings?type=future");
+
+  let html = "<h2>Мои записи</h2>";
+
+rows.forEach(b=>{
+  html += `
+    <div class="card">
+      #${b.id}
+      <div>${new Date(b.start_datetime).toLocaleString()}</div>
+      <div>${ru(b.status)}</div>
+
+      <div>
+        💰 ${b.final_price} ₸
+        ${b.discount_percent_applied > 0 
+          ? `(скидка ${b.discount_percent_applied}%)`
+          : ""}
+      </div>
+
+      ${(b.status==="created"||b.status==="confirmed")
+        ? `<button class="danger" onclick="cancel(${b.id})">Отменить</button>`
+        : ""
+      }
+    </div>
+  `;
+});
+
+  app.innerHTML = html;
+}
+
+async function cancel(id){
+  await api(`/client/me/bookings/${id}/cancel`,{method:"PATCH"});
+  loadMy();
+}
+
+// ---------------- ADMIN ----------------
+async function loadAdmin(){
+  let html = "<h2>Админ</h2>";
+
+  // --- СКИДКИ ---
+  try{
+    const settings = await api("/admin/loyalty/settings");
+
+    html += `
+      <div class="card">
+        <h3>Система скидок</h3>
+
+        <div>
+          Каждая <b>${settings.every_n}</b> запись →
+          скидка <b>${settings.percent}%</b>
+        </div>
+
+        <div>Статус: ${settings.is_active ? "Включена" : "Выключена"}</div>
+
+        <hr>
+
+        <input id="every_n" type="number" value="${settings.every_n}" />
+        <input id="percent" type="number" value="${settings.percent}" />
+
+        <br><br>
+
+        <button onclick="saveLoyalty()">Сохранить</button>
+        <button onclick="toggleLoyalty(${!settings.is_active})">
+          ${settings.is_active ? "Выключить" : "Включить"}
+        </button>
+      </div>
+    `;
+  }catch(e){
+    html += `
+      <div class="card">
+        <h3>Система скидок</h3>
+
+        <input id="every_n" type="number" placeholder="Каждая N запись" />
+        <input id="percent" type="number" placeholder="Процент" />
+
+        <br><br>
+
+        <button onclick="saveLoyalty()">Создать</button>
+      </div>
+    `;
+  }
+
+  // --- БРОНИ ---
+  const resp = await api("/admin/bookings");
+
+  resp.items.forEach(b=>{
+    html += `
+      <div class="card">
+        #${b.id}
+        <div>${new Date(b.start_datetime).toLocaleString()}</div>
+        <div>${ru(b.status)}</div>
+
+        <div>
+          💰 ${b.final_price} ₸
+          ${b.discount_percent_applied > 0 
+            ? `(скидка ${b.discount_percent_applied}%)`
+            : ""}
+        </div>
+
+        ${
+          b.status === "created"
+          ? `
+            <button onclick="admin(${b.id},'confirm')">Подтвердить</button>
+            <button class="danger" onclick="admin(${b.id},'cancel')">Отменить</button>
+          `
+          : ""
+        }
+
+        ${
+          b.status === "confirmed"
+          ? `
+            <button onclick="admin(${b.id},'done')">Готово</button>
+            <button class="danger" onclick="admin(${b.id},'cancel')">Отменить</button>
+          `
+          : ""
+        }
+
+      </div>
+    `;
+  });
+
+  app.innerHTML = html;
+}
+
+async function saveLoyalty(){
+  const every_n = Number(document.getElementById("every_n").value);
+  const percent = Number(document.getElementById("percent").value);
+
+  if(!every_n || percent < 0){
+    return alert("Проверь поля");
+  }
+
+  await api("/admin/loyalty/settings", {
+    method: "PUT",
+    body: { every_n, percent }
+  });
+
+  alert("Сохранено");
+  loadAdmin();
+}
+
+async function toggleLoyalty(active){
+  await api("/admin/loyalty/settings/active", {
+    method: "PATCH",
+    body: { is_active: active }
+  });
+
+  loadAdmin();
+}
+
+async function admin(id,action){
+  await api(`/admin/bookings/${id}/${action}`,{method:"PATCH"});
+  loadAdmin();
+}
+</script>
+
+</body>
+</html>
