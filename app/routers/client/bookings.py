@@ -10,9 +10,6 @@ from app.usecases.booking import create_booking_usecase
 
 router = APIRouter(prefix="/bookings", tags=["Client Bookings"])
 
-# --------------------
-# Создание записи
-# --------------------
 @router.post(
     "", 
     status_code=status.HTTP_201_CREATED,

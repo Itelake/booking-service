@@ -7,7 +7,6 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 
-
 def verify_telegram_webapp_init_data(init_data: str) -> dict:
     bot_token = settings.TELEGRAM_BOT_TOKEN
     if not bot_token:
@@ -16,7 +15,6 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict:
             detail="TELEGRAM_BOT_TOKEN not configured",
         )
 
-    # initData — querystring: key=value&key=value...
     data = dict(parse_qsl(init_data, keep_blank_values=True))
 
     received_hash = data.pop("hash", None)
@@ -46,7 +44,6 @@ def verify_telegram_webapp_init_data(init_data: str) -> dict:
             detail="Invalid initData signature",
         )
 
-    # опционально: протухание initData (5 минут)
     auth_date = data.get("auth_date")
     if auth_date:
         try:

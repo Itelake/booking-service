@@ -30,7 +30,6 @@ async def upsert_loyalty_settings(
     await db.refresh(settings_obj)
     return settings_obj
 
-
 @router.get("/settings", response_model=LoyaltySettingsResponse)
 async def get_loyalty_settings(db: AsyncSession = Depends(get_db)):
     setting_obj = await get_settings(db)
@@ -40,7 +39,6 @@ async def get_loyalty_settings(db: AsyncSession = Depends(get_db)):
             detail="Loyalty settings not configured"
         )
     return setting_obj
-
 
 @router.patch("/settings/active", response_model=LoyaltySettingsResponse)
 async def set_loyalty_active(

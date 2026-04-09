@@ -7,10 +7,6 @@ from app.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 
-# -------------------------
-# ASYNC ENGINE (FastAPI)
-# -------------------------
-
 async_engine = create_async_engine(
     DATABASE_URL,
     echo=True
@@ -30,10 +26,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
 
-
-# -------------------------
-# SYNC ENGINE (Celery)
-# -------------------------
 
 sync_engine = create_engine(
     DATABASE_URL.replace("+asyncpg", ""),

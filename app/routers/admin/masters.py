@@ -11,9 +11,6 @@ from app.services.utils.db_helpers import get_master_or_404, get_service_or_404
 
 router = APIRouter(prefix="/masters", tags=["Admin Masters"])
 
-# --------------------
-# Создание мастера
-# --------------------
 @router.post(
     "",
     response_model=MasterResponse,
@@ -43,9 +40,6 @@ async def create_master(
     await db.refresh(master)
     return master
 
-# --------------------
-# Создание связи между мастером и услугой
-# --------------------
 @router.put(
     "/{master_id}/services/{service_id}", 
     response_model=MasterServiceResponse

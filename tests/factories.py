@@ -86,8 +86,8 @@ async def create_booking(db, user, master, service):
         start_datetime=start_dt,
         end_datetime=end_dt,
         status=BookingStatus.created.value,
-        price_at_booking=1000,   # если nullable=False в модели
-        final_price=1000,        # если nullable=False в модели
+        price_at_booking=1000,  
+        final_price=1000,        
     )
     db.add(booking)
     await db.commit()

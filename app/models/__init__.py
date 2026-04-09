@@ -1,6 +1,5 @@
 from .base import Base
 
-# Импортируем модели, чтобы они зарегистрировались в metadata
 from .user import User, AuthToken
 from .service import Service, ServicePhoto
 from .master import Master, MasterService, MasterWorkingHours

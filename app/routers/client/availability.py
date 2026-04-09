@@ -22,12 +22,10 @@ async def get_availability(
     data: AvailabilityRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    # 1) Проверки сущностей
     await get_master_or_404(db, data.master_id)
     await get_service_or_404(db, data.service_id)
     ms = await get_master_service_or_404(db, data.master_id, data.service_id)
 
-    # 2) Рабочие часы на выбранный день недели
     working_hours = await db.scalar(
         select(MasterWorkingHours).where(
             MasterWorkingHours.master_id == data.master_id,
@@ -44,15 +42,12 @@ async def get_availability(
 
     step = timedelta(minutes=ms.duration_minutes)
 
-    # 3) Рабочее окно в локальном времени (для генерации слотов и ответа)
     day_start_local = datetime.combine(data.date, working_hours.start_time, tzinfo=ALMATY_TZ)
     day_end_local = datetime.combine(data.date, working_hours.end_time, tzinfo=ALMATY_TZ)
 
-    # 4) То же окно в UTC (для запроса к бронированиям)
     day_start_utc = day_start_local.astimezone(UTC)
     day_end_utc = day_end_local.astimezone(UTC)
 
-    # 5) Один запрос: все занятые интервалы в этот день (UTC)
     busy_rows = (await db.execute(
         select(Booking.start_datetime, Booking.end_datetime).where(
             Booking.master_id == data.master_id,
@@ -62,23 +57,19 @@ async def get_availability(
         )
     )).all()
 
-    # 6) Генерим слоты и проверяем конфликты
     slots: list[time] = []
     current_local = day_start_local
 
     while current_local + step <= day_end_local:
-        # Текущий слот в UTC — чтобы сравнить с busy_rows (которые в UTC)
         slot_start_utc = current_local.astimezone(UTC)
         slot_end_utc = (current_local + step).astimezone(UTC)
 
-        # Проверка: пересекается ли слот с любой бронью
         has_conflict = False
         for (b_start, b_end) in busy_rows:
             if overlaps(slot_start_utc, slot_end_utc, b_start, b_end):
                 has_conflict = True
                 break
 
-        # Если не пересекается — слот свободен, добавляем локальное время для UI
         if not has_conflict:
             slots.append(current_local.time())
 

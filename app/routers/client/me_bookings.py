@@ -12,9 +12,6 @@ from app.usecases.booking import cancel_booking_usecase
 
 router = APIRouter(prefix="/me/bookings", tags=["Client Me"])
 
-# --------------------
-# Получение своих записей
-# --------------------
 @router.get("", response_model=list[BookingResponse])
 async def get_my_bookings(
     f: MeBookingFilter = Depends(),
@@ -33,10 +30,6 @@ async def get_my_bookings(
 
     return list((await db.scalars(q)).all())
 
-
-# --------------------
-# Отмена записи
-# --------------------
 @router.patch("/{booking_id}/cancel", response_model=BookingResponse)
 async def cancel_my_booking(
     booking_id: int,

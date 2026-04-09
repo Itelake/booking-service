@@ -10,9 +10,6 @@ from app.services.utils.db_helpers import get_service_or_404
 
 router = APIRouter(prefix="/services",tags=["Admin Services"])
 
-# --------------------
-# Создать услугу
-# --------------------
 @router.post(
     "",
     response_model=ServiceResponse,

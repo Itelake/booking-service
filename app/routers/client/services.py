@@ -10,17 +10,11 @@ from app.services.utils.db_helpers import get_service_or_404
 
 router = APIRouter(prefix="/services", tags=["Client Services"])
 
-# --------------------
-# Получение всех услуг
-# --------------------
 @router.get("", response_model=list[ServiceResponse])
 async def list_services(db: AsyncSession = Depends(get_db)):
     result = await db.scalars(select(Service).where(Service.is_active.is_(True)))
     return result.all()
 
-# --------------------
-# Получение мастеров, которые делают данную услугу
-# --------------------
 @router.get("/{service_id}/masters", response_model=list[ServiceMasterResponse])
 async def get_masters_for_service(
     service_id: int,

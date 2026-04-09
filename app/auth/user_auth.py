@@ -9,9 +9,6 @@ from app.services.utils.time import utc_now
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
-# --------------------
-# Проверка пользователя
-# --------------------
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
     creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)
@@ -48,9 +45,6 @@ async def get_current_user(
     
     return user
 
-# --------------------
-# Проверка админа
-# --------------------
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(

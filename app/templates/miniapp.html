@@ -247,25 +247,15 @@ async function loadAdmin(){
   // --- СКИДКИ ---
   try{
     const settings = await api("/admin/loyalty/settings");
-
     html += `
       <div class="card">
         <h3>Система скидок</h3>
-
-        <div>
-          Каждая <b>${settings.every_n}</b> запись →
-          скидка <b>${settings.percent}%</b>
-        </div>
-
+        <div>Каждая <b>${settings.every_n}</b> запись → скидка <b>${settings.percent}%</b></div>
         <div>Статус: ${settings.is_active ? "Включена" : "Выключена"}</div>
-
         <hr>
-
         <input id="every_n" type="number" value="${settings.every_n}" />
         <input id="percent" type="number" value="${settings.percent}" />
-
         <br><br>
-
         <button onclick="saveLoyalty()">Сохранить</button>
         <button onclick="toggleLoyalty(${!settings.is_active})">
           ${settings.is_active ? "Выключить" : "Включить"}
@@ -276,12 +266,9 @@ async function loadAdmin(){
     html += `
       <div class="card">
         <h3>Система скидок</h3>
-
         <input id="every_n" type="number" placeholder="Каждая N запись" />
         <input id="percent" type="number" placeholder="Процент" />
-
         <br><br>
-
         <button onclick="saveLoyalty()">Создать</button>
       </div>
     `;
@@ -289,43 +276,45 @@ async function loadAdmin(){
 
   // --- БРОНИ ---
   const resp = await api("/admin/bookings");
-
   resp.items.forEach(b=>{
     html += `
       <div class="card">
         #${b.id}
         <div>${new Date(b.start_datetime).toLocaleString()}</div>
         <div>${ru(b.status)}</div>
-
         <div>
           💰 ${b.final_price} ₸
           ${b.discount_percent_applied > 0 
             ? `(скидка ${b.discount_percent_applied}%)`
             : ""}
         </div>
-
         ${
           b.status === "created"
-          ? `
-            <button onclick="admin(${b.id},'confirm')">Подтвердить</button>
-            <button class="danger" onclick="admin(${b.id},'cancel')">Отменить</button>
-          `
+          ? `<button onclick="admin(${b.id},'confirm')">Подтвердить</button>
+             <button class="danger" onclick="admin(${b.id},'cancel')">Отменить</button>`
           : ""
         }
-
         ${
           b.status === "confirmed"
-          ? `
-            <button onclick="admin(${b.id},'done')">Готово</button>
-            <button class="danger" onclick="admin(${b.id},'cancel')">Отменить</button>
-          `
+          ? `<button onclick="admin(${b.id},'done')">Готово</button>
+             <button class="danger" onclick="admin(${b.id},'cancel')">Отменить</button>`
           : ""
         }
-
       </div>
     `;
   });
 
+  // --- МАССОВАЯ РАССЫЛКА ---
+  html += `
+    <div class="card">
+      <h3>Массовая рассылка</h3>
+      <textarea id="massMessageText" rows="4" style="width:100%"></textarea>
+      <br>
+      <button class="primary" onclick="sendMassMessage()">Отправить всем</button>
+    </div>
+  `;
+
+  // --- Вставляем весь HTML разом ---
   app.innerHTML = html;
 }
 

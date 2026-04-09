@@ -20,7 +20,6 @@ async def engine():
         poolclass=NullPool,
     )
 
-    # создаём таблицы 1 раз на сессию
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -34,14 +33,9 @@ async def engine():
 
 @pytest.fixture
 async def db_session(engine):
-    """
-    Один тест = одна outer-транзакция + savepoint.
-    Даже если код приложения делает commit(), мы всё равно откатим тест в конце.
-    """
     async with engine.connect() as conn:
         outer = await conn.begin()
 
-        # ВАЖНО: bind session к connection, а не к engine
         async_session_factory = async_sessionmaker(
             bind=conn,
             class_=AsyncSession,
@@ -49,13 +43,10 @@ async def db_session(engine):
         )
 
         async with async_session_factory() as session:
-            # первый savepoint
             await session.begin_nested()
 
-            # после каждого commit() savepoint закрывается — пересоздаём
             @event.listens_for(session.sync_session, "after_transaction_end")
             def _restart_savepoint(sess, trans):
-                # trans.nested == True означает, что закрыли именно savepoint
                 if trans.nested and not sess.in_nested_transaction():
                     sess.begin_nested()
 
@@ -73,8 +64,6 @@ async def db(db_session):
 
 @pytest.fixture
 async def user(db_session):
-    # НЕ фиксированный telegram_id, чтобы вообще исключить конфликт
-    # (но даже с фиксированным тут теперь всё будет ок из-за rollback, просто safer так)
     u = User(
         telegram_id=1234567890,
         username="test_user",

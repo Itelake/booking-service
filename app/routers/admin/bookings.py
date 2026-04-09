@@ -45,7 +45,6 @@ async def get_all_bookings(
 
     return {"items": list(items), "total": total, "limit": p.limit, "offset": p.offset}
 
-
 @router.patch("/{booking_id}/confirm", response_model=BookingResponse)
 async def confirm_bookings(booking_id: int, db: AsyncSession = Depends(get_db)):
     return await admin_confirm_booking(db, booking_id)

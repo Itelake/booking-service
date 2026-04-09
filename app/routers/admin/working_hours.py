@@ -9,9 +9,6 @@ from app.schemas.working_hours import WorkingHours, WorkingHoursResponse
 
 router = APIRouter(prefix="/working-hours", tags=["Admin Working Hours"])
 
-# --------------------
-# Добавить время мастеру
-# --------------------
 @router.post(
     "/{master_id}",
     response_model=WorkingHoursResponse,

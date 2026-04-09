@@ -224,11 +224,6 @@ uvicorn app.main:app --reload
 docker-compose up --build -d
 ```
 
-* Применить миграции:
-```bash
-docker-compose exec app alembic upgrade head
-```
-
 Поднимаются сервисы:
 
 * PostgreSQL  

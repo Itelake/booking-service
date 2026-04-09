@@ -18,9 +18,7 @@ async def test_race_confirm_same_booking(client, db):
     async def do_confirm():
         return await client.patch(f"/admin/bookings/{booking.id}/confirm")
 
-    # запускаем одновременно
     r1, r2 = await asyncio.gather(do_confirm(), do_confirm())
 
     codes = sorted([r1.status_code, r2.status_code])
-    # ожидаем: один 200, второй 409
     assert codes == [200, 409]
