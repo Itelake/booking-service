@@ -318,6 +318,23 @@ async function loadAdmin(){
   app.innerHTML = html;
 }
 
+// --- МАССОВАЯ РАССЫЛКА ---
+async function sendMassMessage() {
+    const text = document.getElementById("massMessageText").value.trim();
+    if (!text) return alert("Введите текст рассылки");
+
+    try {
+        await api("/admin/notifications/send", {
+            method: "POST",
+            body: { text }
+        });
+        alert("Массовая рассылка запущена!");
+        document.getElementById("massMessageText").value = "";
+    } catch (e) {
+        alert("Ошибка при отправке: " + e.message);
+    }
+}
+
 async function saveLoyalty(){
   const every_n = Number(document.getElementById("every_n").value);
   const percent = Number(document.getElementById("percent").value);
