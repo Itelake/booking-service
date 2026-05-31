@@ -306,4 +306,4 @@ pytest -v
 
 ## 📄 Лицензия
 
-MIT License
+MIT License © 
